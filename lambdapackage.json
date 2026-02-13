@@ -1,0 +1,10 @@
+{
+  "name": "lambda-clima",
+  "version": "1.0.0",
+  "description": "Funciones Lambda para consultar clima",
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.600.0",
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0"
+  }
+}
