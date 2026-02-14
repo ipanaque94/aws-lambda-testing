@@ -31,22 +31,19 @@ export class LambdaClimaHelper {
       ciudad,
     });
 
-    // 2. Invocar Lambda directamente (simula procesamiento de SQS)
+    // 2. Invocar Lambda directamente
     await this.lambdaInvoker.invokeLambda("Clima", { ciudad });
 
-    // 3. Esperar 5 segundos para que se procese todo
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    // 4. Obtener de cola de resultados
+    // 3. Esperar mensaje específico (ya viene parseado)
     const mensajeResultado = await SQSHelper.waitForMessage(
       CONFIG.SQS_RESULTS_URL,
       (msg) => msg.ciudad?.toLowerCase() === ciudad.toLowerCase(),
       10,
     );
 
-    // 5. Obtener de DynamoDB con reintentos
+    // 4. Obtener de DynamoDB con reintentos
     let dbItem = null;
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       dbItem = await DynamoDBHelper.getItem(ciudad);
       if (dbItem) break;
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -54,9 +51,7 @@ export class LambdaClimaHelper {
 
     return {
       messageId,
-      mensajeResultado: mensajeResultado
-        ? JSON.parse(mensajeResultado.Body)
-        : {},
+      mensajeResultado, // ✅ YA NO HAY JSON.parse()
       dbItem,
     };
   }
@@ -64,7 +59,9 @@ export class LambdaClimaHelper {
   async limpiarCiudad(ciudad: string): Promise<void> {
     try {
       await DynamoDBHelper.deleteItem(ciudad);
-    } catch (error) {}
+    } catch (error) {
+      // Ignorar
+    }
   }
 
   async limpiarCiudades(ciudades: string[]): Promise<void> {
