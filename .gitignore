@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 
 # Playwright
 playwright-report/
@@ -22,8 +21,10 @@ playwright/.cache/
 .DS_Store
 Thumbs.db
 
-# Archivos grandes (NO SUBIR)
+# Build
+dist/
+
+# Large files
 *.zip
 *.msi
 *.pkg
-dist/
