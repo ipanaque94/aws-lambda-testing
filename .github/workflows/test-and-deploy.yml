@@ -1,0 +1,100 @@
+name: Test & Deploy to AWS
+
+# Cuándo se ejecuta
+on:
+  push:
+    branches: [main]  # Cada vez que hagas push a main
+
+jobs:
+  # JOB 1: EJECUTAR TESTS
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Descargar tu código
+      - name: Descargar código
+        uses: actions/checkout@v3
+      
+      # 2. Instalar Node.js
+      - name: Instalar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      
+      # 3. Instalar dependencias
+      - name: Instalar dependencias
+        run: npm ci
+      
+      # 4. Instalar Playwright
+      - name: Instalar Playwright
+        run: npx playwright install --with-deps
+      
+      # 5. Ejecutar tests
+      - name: Ejecutar tests
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+          SQS_URL: ${{ secrets.SQS_URL }}
+          SQS_RESULTADO_URL: ${{ secrets.SQS_RESULTADO_URL }}
+          SQS_DLQ_URL: ${{ secrets.SQS_DLQ_URL }}
+          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
+        run: npm test
+      
+      # 6. Subir reporte a S3
+      - name: Subir reporte a S3
+        if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          npm run test:report
+          npx ts-node scripts/uploadReportToS3.ts
+      
+      # 7. Guardar reporte en GitHub
+      - name: Guardar reporte
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+  # JOB 2: DESPLEGAR LAMBDAS (solo si los tests pasaron)
+  deploy-lambda:
+    needs: test  # Espera a que "test" termine exitosamente
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      # 1. Descargar código
+      - name: Descargar código
+        uses: actions/checkout@v3
+      
+      # 2. Configurar AWS
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      # 3. Desplegar Lambda Clima
+      - name: Desplegar Lambda Clima
+        run: |
+          cd lambda
+          npm install --production
+          zip -r clima.zip index.js node_modules/
+          aws lambda update-function-code \
+            --function-name Clima \
+            --zip-file fileb://clima.zip
+      
+      # 4. Desplegar Lambda API Gateway
+      - name: Desplegar Lambda API Gateway
+        run: |
+          cd lambda
+          zip -r api.zip apiGatewayHandler.js node_modules/
+          aws lambda update-function-code \
+            --function-name apiGatewayClima \
+            --zip-file fileb://api.zip
