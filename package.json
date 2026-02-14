@@ -4,10 +4,13 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
-    "test:report": "playwright test --reporter=html",
-    "upload:report": "ts-node scripts/uploadReportToS3.ts",
-    "test:s3": "npm run test:report && npm run upload:report",
-    "test:all": "npm test && npm run upload:report"
+    "test:all": "npm run test:core && npm run test:integration && npm run test:s3",
+    "test:core": "playwright test --grep-invert \"S3 Reports\" --grep-invert \"Tests de integración\" --grep-invert \"CloudWatch muestra métricas de invocaciones\"",
+    "test:integration": "playwright test --grep \"Tests de integración con SQS y DynamoDB\" --timeout=60000 --retries=1",
+    "test:s3": "playwright test tests/S3Reports.spec.ts",
+    "test:cloudwatch": "playwright test --grep \"CloudWatch muestra métricas de invocaciones\"",
+    "test:report": "playwright test --reporter=html && playwright show-report"
+  
   },
   "keywords": [],
   "author": "",

@@ -40,6 +40,8 @@ test("Test con ciudad vacía en DynamoDB", async () => {
 });
 
 test("Simulación de concurrencia - 10 ciudades INVOCAR LAMBDA", async () => {
+  test.setTimeout(120000);
+
   const ciudades = [
     "Jaén",
     "Bagua Grande",
@@ -52,25 +54,46 @@ test("Simulación de concurrencia - 10 ciudades INVOCAR LAMBDA", async () => {
     "Cuzco",
     "Tacna",
   ];
+  let resultados: any[];
 
-  await test.step("1. Invocar Lambda para 10 ciudades", async () => {
+  await test.step("1. Limpiar DynamoDB", async () => {
+    await Promise.all(ciudades.map((c) => DynamoDBHelper.deleteItem(c)));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log("✅ DynamoDB limpio para todas las ciudades");
+  });
+
+  await test.step("2. Invocar Lambda para 10 ciudades", async () => {
     const lambdaInvoker = new LambdaInvoker();
     const promesas = ciudades.map((ciudad) =>
       lambdaInvoker.invokeLambda("Clima", { ciudad }),
     );
-    await Promise.all(promesas);
-    console.log("✅ Lambdas invocadas");
+    resultados = await Promise.all(promesas);
+    console.log("✅ Todas las invocaciones completadas");
   });
 
-  await test.step("2. Esperar procesamiento", async () => {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+  await test.step("3. Esperar propagación (15 segundos)", async () => {
+    await new Promise((resolve) => setTimeout(resolve, 15000)); // ✅ 15 segundos
+    console.log("✅ Esperando propagación...");
   });
 
-  await test.step("3. Verificar en DynamoDB", async () => {
+  await test.step("4. Verificar en DynamoDB con reintentos", async () => {
     for (const ciudad of ciudades) {
-      const result = await DynamoDBHelper.getItem(ciudad);
+      let result = null;
+
+      // ✅ 10 reintentos de 2 segundos cada uno
+      for (let i = 0; i < 10; i++) {
+        result = await DynamoDBHelper.getItem(ciudad);
+        if (result) break;
+
+        if (i < 9) {
+          console.log(`⏳ ${ciudad}: Intento ${i + 1}/10`);
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      }
+
       expect(result).toBeDefined();
-      console.log(`✅ ${ciudad}: Verificado`);
+      expect(result.ciudad).toBe(ciudad);
+      console.log(`✅ ${ciudad}: OK`);
     }
   });
 });

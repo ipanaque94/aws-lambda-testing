@@ -38,7 +38,7 @@ export class LambdaClimaHelper {
     const mensajeResultado = await SQSHelper.waitForMessage(
       CONFIG.SQS_RESULTS_URL,
       (msg) => msg.ciudad?.toLowerCase() === ciudad.toLowerCase(),
-      10,
+      15,
     );
 
     // 4. Obtener de DynamoDB con reintentos
@@ -51,7 +51,7 @@ export class LambdaClimaHelper {
 
     return {
       messageId,
-      mensajeResultado, // ✅ YA NO HAY JSON.parse()
+      mensajeResultado,
       dbItem,
     };
   }

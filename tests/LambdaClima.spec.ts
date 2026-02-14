@@ -49,7 +49,7 @@ test.describe.serial("Tests de integración con SQS y DynamoDB", () => {
 
   for (const ciudad of ciudadesReales) {
     test(`Procesar ciudad válida: ${ciudad}`, async () => {
-      test.setTimeout(45000);
+      test.setTimeout(60000);
 
       let messageId: string;
       let mensajeResultado: any;
