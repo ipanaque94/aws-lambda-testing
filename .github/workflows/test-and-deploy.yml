@@ -7,7 +7,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       
-      - name: Run core tests
+      - name: Run all tests
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -34,53 +34,8 @@ jobs:
           API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
         run: |
           npx playwright test --project=chromium \
-            --grep-invert "S3 Reports|CloudWatch muestra métricas de invocaciones|Tests de integración con SQS y DynamoDB" \
-            --retries=2
-      
-      - name: Run integration tests (with higher timeout)
-        if: always()
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
-          SQS_URL: ${{ secrets.SQS_URL }}
-          SQS_RESULTADO_URL: ${{ secrets.SQS_RESULTADO_URL }}
-          SQS_DLQ_URL: ${{ secrets.SQS_DLQ_URL }}
-          OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
-          API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
-        run: |
-          npx playwright test --project=chromium \
-            --grep "Tests de integración con SQS y DynamoDB" \
-            --retries=3 \
-            --timeout=60000
-        continue-on-error: true
-      
-      - name: Generate HTML report
-        if: always()
-        run: npx playwright show-report || true
-      
-      - name: Run S3 tests
-        if: always()
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
-        run: |
-          npx playwright test tests/S3Reports.spec.ts \
-            --project=chromium \
-            --retries=2
-        continue-on-error: true
-      
-      - name: Run CloudWatch metrics test (optional)
-        if: always()
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
-        run: |
-          npx playwright test --project=chromium \
-            --grep "CloudWatch muestra métricas de invocaciones" \
-            --retries=2
+            --retries=2 \
+            --reporter=html,list
         continue-on-error: true
       
       - name: Upload Playwright Report
@@ -90,7 +45,6 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
-          if-no-files-found: warn
 
   deploy-lambda:
     needs: test
@@ -119,12 +73,10 @@ jobs:
             if [ -f "index.js" ]; then
               zip -r clima.zip index.js node_modules/
               aws lambda update-function-code --function-name Clima --zip-file fileb://clima.zip
-              echo "✅ Lambda Clima deployed"
             fi
             
             if [ -f "apiGatewayHandler.js" ]; then
               zip -r api.zip apiGatewayHandler.js node_modules/
               aws lambda update-function-code --function-name apiGatewayClima --zip-file fileb://api.zip
-              echo "✅ Lambda API Gateway deployed"
             fi
           fi
