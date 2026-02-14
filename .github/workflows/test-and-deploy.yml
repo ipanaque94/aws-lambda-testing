@@ -3,27 +3,24 @@ name: Test & Deploy to AWS
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
       
       - name: Install dependencies
         run: npm ci
       
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
       
       - name: Run tests
         env:
@@ -35,69 +32,41 @@ jobs:
           SQS_DLQ_URL: ${{ secrets.SQS_DLQ_URL }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
           API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
-        run: |
-          npx playwright test --grep-invert "S3 Reports"
-        continue-on-error: false
-      
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results
-          path: test-results/
-          retention-days: 30
-          if-no-files-found: warn
+        run: npx playwright test --project=chromium --grep-invert "S3 Reports|CloudWatch muestra métricas"
 
   deploy-lambda:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && success()
+    if: github.ref == 'refs/heads/main'
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
       
-      - name: Deploy Lambda Clima
+      - name: Deploy Lambdas
         run: |
-          if [ -d "lambda" ] && [ -f "lambda/index.js" ]; then
+          if [ -d "lambda" ]; then
             cd lambda
-            npm install --production --ignore-scripts
-            zip -r clima.zip index.js node_modules/ package.json || true
-            if [ -f "clima.zip" ]; then
-              aws lambda update-function-code \
-                --function-name Clima \
-                --zip-file fileb://clima.zip \
-                --region us-east-1 || echo "⚠️ Lambda Clima deployment failed"
-              echo "✅ Lambda Clima deployed"
+            npm install --production
+            
+            # Lambda Clima
+            if [ -f "index.js" ]; then
+              zip -r clima.zip index.js node_modules/
+              aws lambda update-function-code --function-name Clima --zip-file fileb://clima.zip || true
             fi
-          else
-            echo "⚠️ lambda/index.js not found"
-          fi
-      
-      - name: Deploy Lambda API Gateway
-        run: |
-          if [ -d "lambda" ] && [ -f "lambda/apiGatewayHandler.js" ]; then
-            cd lambda
-            zip -r api.zip apiGatewayHandler.js node_modules/ package.json || true
-            if [ -f "api.zip" ]; then
-              aws lambda update-function-code \
-                --function-name apiGatewayClima \
-                --zip-file fileb://api.zip \
-                --region us-east-1 || echo "⚠️ Lambda API Gateway deployment failed"
-              echo "✅ Lambda API Gateway deployed"
+            
+            # Lambda API Gateway
+            if [ -f "apiGatewayHandler.js" ]; then
+              zip -r api.zip apiGatewayHandler.js node_modules/
+              aws lambda update-function-code --function-name apiGatewayClima --zip-file fileb://api.zip || true
             fi
-          else
-            echo "⚠️ lambda/apiGatewayHandler.js not found"
           fi

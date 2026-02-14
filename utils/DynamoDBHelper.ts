@@ -1,65 +1,55 @@
-import * as AWS from "aws-sdk";
-import { CONFIG } from "./TestConfig";
+import { DynamoDBClient, DescribeTableCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  DeleteCommand,
+} from "@aws-sdk/lib-dynamodb";
 
-AWS.config.update({ region: CONFIG.AWS_REGION });
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({
+  region: process.env.AWS_REGION || "us-east-1",
+});
+const dynamoDB = DynamoDBDocumentClient.from(client);
+const TABLE_NAME = "city";
 
 export class DynamoDBHelper {
-  /**
-   * Obtener un item de DynamoDB
-   */
-  static async getItem(ciudad: string): Promise<any> {
-    const result = await dynamoDB
-      .get({
-        TableName: CONFIG.DYNAMODB_TABLE,
-        Key: { ciudad },
-      })
-      .promise();
-    return result.Item;
-  }
-
-  /**
-   * Guardar un item en DynamoDB
-   */
   static async putItem(item: {
     ciudad: string;
     clima: string;
     temperatura: string;
   }): Promise<void> {
-    await dynamoDB
-      .put({
-        TableName: CONFIG.DYNAMODB_TABLE,
-        Item: {
-          ...item,
-          fecha: new Date().toISOString(),
-        },
-      })
-      .promise();
+    const params = {
+      TableName: TABLE_NAME,
+      Item: {
+        ...item,
+        fecha: new Date().toISOString(),
+      },
+    };
+
+    await dynamoDB.send(new PutCommand(params));
   }
 
-  /**
-   * Eliminar un item de DynamoDB
-   */
+  static async getItem(ciudad: string): Promise<any> {
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { ciudad },
+    };
+
+    const result = await dynamoDB.send(new GetCommand(params));
+    return result.Item;
+  }
+
   static async deleteItem(ciudad: string): Promise<void> {
-    try {
-      await dynamoDB
-        .delete({
-          TableName: CONFIG.DYNAMODB_TABLE,
-          Key: { ciudad },
-        })
-        .promise();
-    } catch (error) {
-      // Ignorar si no existe
-    }
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { ciudad },
+    };
+
+    await dynamoDB.send(new DeleteCommand(params));
   }
 
-  /**
-   * Verificar configuración de la tabla
-   */
-  static async getTableInfo(): Promise<AWS.DynamoDB.DescribeTableOutput> {
-    const dynamoDBClient = new AWS.DynamoDB();
-    return await dynamoDBClient
-      .describeTable({ TableName: CONFIG.DYNAMODB_TABLE })
-      .promise();
+  static async getTableInfo(): Promise<any> {
+    const command = new DescribeTableCommand({ TableName: TABLE_NAME });
+    return await client.send(command);
   }
 }

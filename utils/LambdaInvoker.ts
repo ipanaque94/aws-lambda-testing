@@ -1,19 +1,20 @@
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import { config } from "dotenv";
-config();
 
 export class LambdaInvoker {
   private lambdaClient: LambdaClient;
+
   constructor() {
-    this.lambdaClient = new LambdaClient({ region: process.env.AWS_REGION });
+    this.lambdaClient = new LambdaClient({
+      region: process.env.AWS_REGION || "us-east-1",
+    });
   }
 
-  async invokeLambda(functionName: string, payloadObj: object): Promise<any> {
+  async invokeLambda(functionName: string, payload: any): Promise<any> {
     const command = new InvokeCommand({
       FunctionName: functionName,
-      Payload: Buffer.from(JSON.stringify(payloadObj)),
-      InvocationType: "RequestResponse",
+      Payload: JSON.stringify(payload),
     });
+
     try {
       const response = await this.lambdaClient.send(command);
       return JSON.parse(Buffer.from(response.Payload as Uint8Array).toString());
