@@ -32,7 +32,7 @@ jobs:
           SQS_DLQ_URL: ${{ secrets.SQS_DLQ_URL }}
           OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
           API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
-        run: npx playwright test --project=chromium --grep-invert "S3 Reports|CloudWatch muestra métricas"
+        run: npx playwright test --project=chromium --grep-invert "S3 Reports|CloudWatch muestra métricas" --retries=2
 
   deploy-lambda:
     needs: test

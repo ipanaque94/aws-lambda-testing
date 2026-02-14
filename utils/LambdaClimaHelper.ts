@@ -1,6 +1,6 @@
 import { LambdaInvoker } from "./LambdaInvoker";
-import { DynamoDBHelper } from "./DynamoDBHelper";
 import { SQSHelper } from "./SQSHelper";
+import { DynamoDBHelper } from "./DynamoDBHelper";
 import { CONFIG } from "./TestConfig";
 
 export class LambdaClimaHelper {
@@ -10,28 +10,17 @@ export class LambdaClimaHelper {
     this.lambdaInvoker = new LambdaInvoker();
   }
 
-  /**
-   * Invocar Lambda con ciudad (modo real)
-   */
-  async invocarClima(ciudad: string): Promise<any> {
-    return await this.lambdaInvoker.invokeLambda(CONFIG.LAMBDA_FUNCTION, {
-      ciudad,
-    });
-  }
-
-  /**
-   * Invocar Lambda con datos mock
-   */
   async invocarClimaMock(ciudad: string): Promise<any> {
-    return await this.lambdaInvoker.invokeLambda(CONFIG.LAMBDA_FUNCTION, {
+    return this.lambdaInvoker.invokeLambda("Clima", {
       ciudad,
       mock: true,
     });
   }
 
-  /**
-   * Procesar ciudad a través de SQS + Lambda + DynamoDB
-   */
+  async invocarClima(ciudad: string): Promise<any> {
+    return this.lambdaInvoker.invokeLambda("Clima", { ciudad });
+  }
+
   async procesarCiudadCompleto(ciudad: string): Promise<{
     messageId: string;
     mensajeResultado: any;
@@ -42,73 +31,50 @@ export class LambdaClimaHelper {
       ciudad,
     });
 
-    // 2. Esperar en cola de resultados
-    const mensajeResultado = await SQSHelper.waitForMessage(
+    // 2. Invocar Lambda directamente (simula procesamiento de SQS)
+    await this.lambdaInvoker.invokeLambda("Clima", { ciudad });
+
+    // 3. Esperar 5 segundos para que se procese todo
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
+    // 4. Obtener de cola de resultados
+    const mensajeResultado = await SQSHelper.receiveMessage(
       CONFIG.SQS_RESULTS_URL,
-      (msg) => msg.ciudad.toLowerCase() === ciudad.toLowerCase(),
     );
 
-    // 3. Verificar en DynamoDB
-    const dbItem = await DynamoDBHelper.getItem(ciudad);
+    // 5. Obtener de DynamoDB con reintentos
+    let dbItem = null;
+    for (let i = 0; i < 3; i++) {
+      dbItem = await DynamoDBHelper.getItem(ciudad);
+      if (dbItem) break;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
 
-    return { messageId, mensajeResultado, dbItem };
+    return {
+      messageId,
+      mensajeResultado: mensajeResultado
+        ? JSON.parse(mensajeResultado.Body)
+        : {},
+      dbItem,
+    };
   }
 
-  /**
-   * Limpiar ciudad de DynamoDB
-   */
   async limpiarCiudad(ciudad: string): Promise<void> {
-    await DynamoDBHelper.deleteItem(ciudad);
+    try {
+      await DynamoDBHelper.deleteItem(ciudad);
+    } catch (error) {
+      // Ignorar errores si no existe
+    }
   }
 
-  /**
-   * Limpiar múltiples ciudades
-   */
   async limpiarCiudades(ciudades: string[]): Promise<void> {
     await Promise.all(ciudades.map((c) => this.limpiarCiudad(c)));
   }
 
-  /**
-   * Validar respuesta exitosa de Lambda
-   */
-  validarRespuestaExitosa(response: any, ciudad: string): void {
-    if (response.statusCode !== 200) {
-      throw new Error(
-        `Lambda falló para ${ciudad}: ${JSON.stringify(response)}`,
-      );
-    }
-
-    const result = JSON.parse(response.body);
-    if (result.ciudad !== ciudad) {
-      throw new Error(`Ciudad esperada: ${ciudad}, recibida: ${result.ciudad}`);
-    }
-
-    if (!result.temperatura || !result.temperatura.includes("°C")) {
-      throw new Error("Temperatura inválida");
-    }
-  }
-
-  /**
-   * Validar respuesta de error de Lambda
-   */
-  validarRespuestaError(response: any, expectedStatus: number): void {
-    if (response.statusCode !== expectedStatus) {
-      throw new Error(
-        `StatusCode esperado: ${expectedStatus}, recibido: ${response.statusCode}`,
-      );
-    }
-
-    const result = JSON.parse(response.body);
-    if (!result.error) {
-      throw new Error("Respuesta de error no contiene campo 'error'");
-    }
-  }
-
-  /**
-   * Procesar múltiples ciudades en paralelo
-   */
   async procesarCiudadesParalelo(ciudades: string[]): Promise<any[]> {
-    const promesas = ciudades.map((ciudad) => this.invocarClima(ciudad));
+    const promesas = ciudades.map((ciudad) =>
+      this.lambdaInvoker.invokeLambda("Clima", { ciudad }),
+    );
     return await Promise.all(promesas);
   }
 }

@@ -27,6 +27,38 @@ export class SQSHelper {
   }
 
   /**
+   * Recibir UN mensaje de la cola
+   */
+  static async receiveMessage(queueUrl: string): Promise<any> {
+    const result = await sqsClient.send(
+      new ReceiveMessageCommand({
+        QueueUrl: queueUrl,
+        MaxNumberOfMessages: 1,
+        WaitTimeSeconds: 10,
+      }),
+    );
+
+    if (result.Messages && result.Messages.length > 0) {
+      const message = result.Messages[0];
+
+      // Eliminar mensaje de la cola
+      await sqsClient.send(
+        new DeleteMessageCommand({
+          QueueUrl: queueUrl,
+          ReceiptHandle: message.ReceiptHandle!,
+        }),
+      );
+
+      return {
+        MessageId: message.MessageId,
+        Body: message.Body,
+      };
+    }
+
+    return null;
+  }
+
+  /**
    * Esperar mensaje en cola con polling
    */
   static async waitForMessage(

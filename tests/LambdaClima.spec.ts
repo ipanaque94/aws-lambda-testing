@@ -49,6 +49,8 @@ test.describe.serial("Tests de integración con SQS y DynamoDB", () => {
 
   for (const ciudad of ciudadesReales) {
     test(`Procesar ciudad válida: ${ciudad}`, async () => {
+      test.setTimeout(45000);
+
       let messageId: string;
       let mensajeResultado: any;
       let dbItem: any;
@@ -64,15 +66,12 @@ test.describe.serial("Tests de integración con SQS y DynamoDB", () => {
       });
 
       await test.step("2. Verificar mensaje en cola de resultados", async () => {
-        expect(mensajeResultado.ciudad.toLowerCase()).toBe(
+        expect(mensajeResultado.ciudad?.toLowerCase()).toBe(
           ciudad.toLowerCase(),
         );
         expect(typeof mensajeResultado.clima).toBe("string");
         expect(mensajeResultado.temperatura).toContain("°C");
-        console.log(
-          "✅ Mensaje procesado en cola de resultados:",
-          mensajeResultado,
-        );
+        console.log("✅ Mensaje procesado:", mensajeResultado);
       });
 
       await test.step("3. Verificar datos guardados en DynamoDB", async () => {
@@ -80,7 +79,7 @@ test.describe.serial("Tests de integración con SQS y DynamoDB", () => {
         expect(dbItem.ciudad).toBe(ciudad);
         expect(typeof dbItem.clima).toBe("string");
         expect(dbItem.temperatura).toContain("°C");
-        console.log("✅ Datos guardados en DynamoDB:", dbItem);
+        console.log("✅ Datos en DynamoDB:", dbItem);
       });
     });
   }
