@@ -38,8 +38,10 @@ export class LambdaClimaHelper {
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // 4. Obtener de cola de resultados
-    const mensajeResultado = await SQSHelper.receiveMessage(
+    const mensajeResultado = await SQSHelper.waitForMessage(
       CONFIG.SQS_RESULTS_URL,
+      (msg) => msg.ciudad?.toLowerCase() === ciudad.toLowerCase(),
+      10,
     );
 
     // 5. Obtener de DynamoDB con reintentos
@@ -62,9 +64,7 @@ export class LambdaClimaHelper {
   async limpiarCiudad(ciudad: string): Promise<void> {
     try {
       await DynamoDBHelper.deleteItem(ciudad);
-    } catch (error) {
-      // Ignorar errores si no existe
-    }
+    } catch (error) {}
   }
 
   async limpiarCiudades(ciudades: string[]): Promise<void> {

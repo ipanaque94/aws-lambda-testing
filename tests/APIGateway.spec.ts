@@ -31,7 +31,7 @@ test.describe("Tests de API Gateway", () => {
     await test.step("1. Enviar petición sin campo 'ciudad'", async () => {
       try {
         await APIGatewayHelper.post<ClimaResponse>("/clima", {});
-        expect(true).toBe(false); // No debería llegar aquí
+        expect(true).toBe(false);
       } catch (error: any) {
         console.log("✅ API Gateway rechazó petición inválida");
 
