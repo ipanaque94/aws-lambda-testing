@@ -155,7 +155,7 @@ exports.handler = async (event) => {
         }
       }
 
-      // Si es invocación directa, distinguir el tipo de error
+      // Si es invocación directa, se distingue el tipo de error
       if (!record.body) {
         const mensaje = error?.message || "";
 

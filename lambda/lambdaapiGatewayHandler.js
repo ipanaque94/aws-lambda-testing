@@ -21,7 +21,6 @@ exports.handler = async (event) => {
   }
 
   try {
-    // ✅ Parsear body - puede venir como string o como objeto
     let body;
     if (typeof event.body === "string") {
       body = JSON.parse(event.body);
