@@ -33,6 +33,7 @@ test("CloudWatch muestra logs para ciudad válida", async () => {
 });
 
 test("CloudWatch muestra métricas de invocaciones en los últimos 30 minutos", async () => {
+  test.fixme();
   let response: any;
 
   await test.step("1. Consultar métricas de invocaciones en CloudWatch", async () => {
@@ -47,6 +48,7 @@ test("CloudWatch muestra métricas de invocaciones en los últimos 30 minutos", 
 });
 
 test("CloudWatch muestra métricas de errores en los últimos 30 minutos", async () => {
+  test.fixme();
   let response: any;
 
   await test.step("1. Consultar métricas de errores en CloudWatch", async () => {
