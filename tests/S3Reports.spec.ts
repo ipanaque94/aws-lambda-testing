@@ -15,7 +15,7 @@ test.describe.serial("S3 Reports - En orden", () => {
   });
 
   test("1. Subir reporte a S3", async () => {
-    //test.fixme();
+    test.fixme(); // comentar de manera local
 
     await test.step("Verificar directorio existe", async () => {
       const exists = existsSync(reportDir);
@@ -45,7 +45,7 @@ test.describe.serial("S3 Reports - En orden", () => {
   });
 
   test("2. Verificar archivo existe", async () => {
-    //test.fixme();
+    test.fixme();
 
     await test.step("Verificar existencia", async () => {
       const exists = await s3Service.fileExists(`${keyPrefix}index.html`);
@@ -55,7 +55,7 @@ test.describe.serial("S3 Reports - En orden", () => {
   });
 
   test("3. Leer contenido", async () => {
-    //test.fixme();
+    test.fixme();
 
     await test.step("Leer HTML", async () => {
       // ✅ Verificar que existe en lugar de leer contenido
@@ -67,7 +67,7 @@ test.describe.serial("S3 Reports - En orden", () => {
 });
 
 test("Generar múltiples URLs pre-firmadas con diferentes tiempos", async () => {
-  //test.fixme();
+  test.fixme();
 
   const s3Service = new S3Service("playwright-reports-clima");
   const testKey = "test/sample.html";
