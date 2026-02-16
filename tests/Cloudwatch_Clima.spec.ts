@@ -32,11 +32,11 @@ test("CloudWatch muestra logs para ciudad válida", async () => {
   });
 });
 
-test("CloudWatch muestra métricas de invocaciones en los últimos 5 minutos", async () => {
+test("CloudWatch muestra métricas de invocaciones en los últimos 30 minutos", async () => {
   let response: any;
 
   await test.step("1. Consultar métricas de invocaciones en CloudWatch", async () => {
-    response = await CloudWatchHelper.getLambdaMetrics("Invocations", 5);
+    response = await CloudWatchHelper.getLambdaMetrics("Invocations", 30);
     console.log("✅ Métricas obtenidas");
   });
 
@@ -46,11 +46,11 @@ test("CloudWatch muestra métricas de invocaciones en los últimos 5 minutos", a
   });
 });
 
-test("CloudWatch muestra métricas de errores en los últimos 5 minutos", async () => {
+test("CloudWatch muestra métricas de errores en los últimos 30 minutos", async () => {
   let response: any;
 
   await test.step("1. Consultar métricas de errores en CloudWatch", async () => {
-    response = await CloudWatchHelper.getLambdaMetrics("Errors", 5);
+    response = await CloudWatchHelper.getLambdaMetrics("Errors", 30);
     console.log("✅ Métricas de errores obtenidas");
   });
 

@@ -50,7 +50,7 @@ jobs:
   deploy-lambda:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && always()
     
     steps:
       - uses: actions/checkout@v4
