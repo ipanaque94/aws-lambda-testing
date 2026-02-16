@@ -18,7 +18,7 @@ test.describe.serial("S3 Reports - En orden", () => {
     test.fixme();
 
     await test.step("Verificar directorio existe", async () => {
-      const exists = existsSync(reportDir); // ✅ Usar existsSync (ya importado)
+      const exists = existsSync(reportDir);
       if (!exists) {
         console.log("⚠️ Generando reporte...");
       }
