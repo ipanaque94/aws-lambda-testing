@@ -16,6 +16,8 @@ export const CONFIG = {
   API_GATEWAY_URL: process.env.API_GATEWAY_URL!,
 
   // Polling
+  POLLING_INTERVAL: 2000, // ms entre intentos
+  MAX_ATTEMPTS: 15, // máximo de intentos para polling
   MAX_POLL_ATTEMPTS: 15,
   POLL_INTERVAL_MS: 2000,
   SQS_WAIT_TIME_SECONDS: 5,
